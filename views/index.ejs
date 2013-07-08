@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel='stylesheet' href='/javascripts/jam-datatables/media/css/demo_page.css' />
+
+<style type="text/css" title="currentStyle">
+@import "/javascripts/jam-datatables/media/css/demo_page.css";
+@import "/javascripts/jam-datatables/media/css/demo_table.css";
+@import "/javascripts/jam-datatables/media/css/demo_table_jui.css";
+@import "/javascripts/jam-datatables/media/css/jquery.dataTables.css";
+@import "/javascripts/jam-datatables/media/css/jquery.dataTables_themeroller.css";
+    </style>
+
+
+<script type="text/template" id="rowTemplate">
+
+
+      <td data-bind="text: Name"></td><td><select data-bind="options : $parent.sizes, value : Size"></select><span data-bind="text : $parent.title"></span></td><td data-bind="text: MemberCount"></td><td data-bind="text: Price"></td>
+
+</script>
+    <script type="text/javascript" src="/javascripts/require.js"></script>
+    <script type="text/javascript">
+
+    require(["jquery", "knockout", "jam-datatables"], function($, ko) {
+
+(function($, window, document) {
+ 
+ 
+if ( typeof $.fn.dataTable == "function" &&
+     typeof $.fn.dataTableExt.fnVersionCheck == "function" &&
+     $.fn.dataTableExt.fnVersionCheck('1.7.0') )
+   {
+   $.fn.dataTableExt.oApi.fnReloadAjax = function(oSettings, oUrl, oData)
+      {
+      if (oUrl)
+         oSettings.sAjaxSource=oUrl;
+      //oSettings.sAjaxSource = sNewSource;
+      this.fnClearTable(this);
+      this.oApi._fnProcessingDisplay(oSettings, true );
+      var that = this;
+       
+      $.getJSON(oSettings.sAjaxSource, oData, function(json){
+      /* Got the data - add it to the table */
+      for (var i=0; i<json.aaData.length; i++)
+      {
+      that.oApi._fnAddData(oSettings, json.aaData[i]);
+      }
+       
+      oSettings.aiDisplay = oSettings.aiDisplayMaster.slice();
+      that.fnDraw(that);
+      that.oApi._fnProcessingDisplay(oSettings, false);
+        });
+      }
+   }
+})(jQuery, window, document);
+//---------------------------------------------------------------------------------------
+/* The dataTable binding */
+(function($, ko){
+    ko.bindingHandlers.dataTable = {
+        init: function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext){
+            var binding = ko.utils.unwrapObservable(valueAccessor());
+
+            var options = binding.options;
+
+            if(options){
+              var oTable ;
+                options.fnRowCallback = function(row, data, displayIndex, displayIndexFull, next){
+                 ko.renderTemplate(options.rowTemplate, bindingContext.createChildContext(options.buildRow(data, oTable)), null, row, "replaceChildren");
+                }
+                oTable = $(element).dataTable(options);
+                
+            }
+        }
+        // ,
+        // update: function(element, valueAccessor){
+        //     var binding = ko.utils.unwrapObservable(valueAccessor());
+            
+        //     // If the binding isn't an object, turn it into one. 
+        //     if(!binding.data){
+        //         binding = { data: valueAccessor() }
+        //     }
+            
+        //     // Clear table
+        //     $(element).dataTable().fnClearTable();
+            
+        //     // Rebuild table from data source specified in binding
+        //     $(element).dataTable().fnAddData(binding.data);
+        // }
+    };
+})(jQuery, ko);
+//---------------------------------------------------------------------------------------
+
+    	$(function(){
+
+        var Girl = function(data, oTable){
+          var self = this;
+          $.extend(self, data);
+
+          self.Size = ko.observable(data.Size) 
+
+          self.update =  ko.computed(function(){
+            var value = self.Size();
+            if (self.update){
+              alert(value);//ajax update here
+              oTable.fnReloadAjax();
+            }
+          })
+        }
+
+
+    		var vm = {
+    			title : ko.observable('hello'),
+          sizes : ['1', '2', '3', '4', '5']
+    		};
+
+        vm.girls = ko.observableArray([]);
+        vm.buildGirl = function(data, oTable){
+          return new Girl(data, oTable);
+        }
+        vm.columns = [
+            { 'mData' : 'Name' },
+            { 'mData' : 'Size' },
+            { 'mData' : 'MemberCount' },
+            { 'mData' : 'Price' }            
+          ];
+
+
+    		ko.applyBindings(vm);
+
+    	})
+    });
+    </script>
+  </head>
+  <body>
+    <h1>The girls</h1>
+
+    
+    <input type="text" data-bind="value : title"/>
+    <p data-bind="text : 'Welcome to ' + title()"></p>
+    <table id="girls-table" data-bind="dataTable: { 
+      options : {
+          bProcessing : true,
+          bServerSide: true,
+          aoColumns : columns,
+          buildRow : buildGirl,
+          rowTemplate : 'rowTemplate',
+          sAjaxSource: '/getGirls'
+        }
+    }
+">
+      <thead>
+        <tr>  
+        <th>Name</th>
+        <th>Size</th>
+        <th>Member count</th>
+        <th>Price</th>     
+        </tr>        
+      </thead>
+      <tbody>
+      </tbody>
+    </table>
+  </body>
+</html>
